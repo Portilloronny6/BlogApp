@@ -17,6 +17,7 @@ class PostAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("title",)}
 
     # aparecera una lupa para hacer busquedas a partir de este campo
+    # must be a foreign key or a many-to-many field.
     raw_id_fields = ("author",)
 
     # fechas para mostrar los posts con cierta jerarquia
