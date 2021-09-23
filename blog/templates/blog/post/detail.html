@@ -1,4 +1,5 @@
 {% extends "blog/base.html" %}
+{% load blog_tags %}
 
 {% block title %}
   {{ post.title }}
@@ -10,6 +11,59 @@
     Published {{ post.publish }} by {{ post.author }}
   </p>
 
-  {{ post.body|linebreaks }}
+  <span style="font-size: 130%">{{ post.body|markdown }}</span>
 
+  <p>
+    <a class="btn btn-primary" href="{% url 'blog:post_share' post.id %}">
+      Share this post
+    </a>
+  </p>
+
+  <hr>
+  <h4>Similar posts</h4>
+  {% for post in similar_posts %}
+    <p>
+      <a href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+    </p>
+  {% empty %}
+    There are no similar posts yet.
+  {% endfor %}
+  <hr>
+
+  {#  Cantidad de comentarios #}
+  {% with comments.count as total_comments %}
+    <h2>
+      {{ total_comments }} comment{{ total_comments|pluralize }}
+    </h2>
+  {% endwith %}
+
+  {#  Mostramos los comentarios si existen #}
+  {% for comment in comments %}
+    <div class="comment">
+      <p class="info">
+        Comment <b>{{ forloop.counter }}</b> by <b style="color: #721c24">{{ comment.name }}</b>
+        {{ comment.created }}
+      </p>
+      <b>{{ comment.body|linebreaks }}</b>
+    </div>
+  {% empty %}
+    <p>There are no comments yet.</p>
+  {% endfor %}
+
+  {#  Se muestra el formulario para agregar mas comentarios #}
+  {% if new_comment %}
+    <h2 class="alert-info" style="text-align: center;">Your comment has been added.</h2>
+    <a class="btn btn-secondary" href="{% url 'blog:post_list' %}"> Go back </a>
+  {% else %}
+    <hr>
+    <h2>Add a new comment</h2>
+    <form method="post">
+      <table>
+        {{ comment_form.as_table }}
+      </table>
+      {% csrf_token %}
+      <br>
+      <input class="btn btn-primary" type="submit" value="Add comment">
+    </form>
+  {% endif %}
 {% endblock %}
