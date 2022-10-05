@@ -6,13 +6,13 @@ from django.contrib.auth.models import User
 
 class PublishedManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(status='published')
+        return super().get_queryset().filter(status=Post.Status.PUBLISHED)
 
 
 class Post(models.Model):
-    class STATUS_CHOICES(models.TextChoices):
-        DRAFT = 'draft', 'Draft'
-        PUBLISHED = 'published', 'Published'
+    class Status(models.TextChoices):
+        DRAFT = 'DF', 'Draft'
+        PUBLISHED = 'PB', 'Published'
 
     title = models.CharField(max_length=250)
     slug = models.SlugField(max_length=250, unique_for_date='publish')
@@ -21,7 +21,7 @@ class Post(models.Model):
     publish = models.DateTimeField(default=timezone.now)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES.choices, default='draft')
+    status = models.CharField(max_length=2, choices=Status.choices, default=Status.DRAFT)
     objects = models.Manager()
     published = PublishedManager()
 
@@ -32,5 +32,12 @@ class Post(models.Model):
         return self.title
 
     def get_absolute_url(self):
-        return reverse('blogsito:post_detail',
-                       args=[self.publish.year, self.publish.month, self.publish.day, self.slug])
+        return reverse(
+            'blogsito:post_detail',
+            args=[
+                self.publish.year,
+                self.publish.month,
+                self.publish.day,
+                self.slug
+            ]
+        )
