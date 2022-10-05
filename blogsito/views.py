@@ -3,7 +3,7 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.shortcuts import render, get_object_or_404
 from django.views import View
 
-from blogsito.forms import EmailPostForm
+from blogsito.forms import EmailPostForm, CommentForm
 from blogsito.models import Post
 
 
@@ -12,7 +12,7 @@ class PostListView(View):
     def get(self, request):
         posts = Post.published.all()
         paginator = Paginator(posts, 3)  # 3 posts in each page_number
-        page_number = request.GET.get('page_number')
+        page_number = request.GET.get('page')
         try:
             posts = paginator.page(page_number)
         except PageNotAnInteger:
@@ -23,7 +23,6 @@ class PostListView(View):
             posts = paginator.page(paginator.num_pages)
         context = {
             'posts': posts,
-            'page_number': page_number,
         }
         return render(request, 'blogsito/list.html', context=context)
 
@@ -35,8 +34,12 @@ class PostDetailView(View):
             Post, slug=slug, status=Post.Status.PUBLISHED,
             publish__year=year, publish__month=month, publish__day=day
         )
+        comments = post.comments.filter(active=True)
+        form = CommentForm()
         context = {
             'post': post,
+            'comments': comments,
+            'form': form,
         }
         return render(request, 'blogsito/detail.html', context=context)
 
@@ -74,3 +77,26 @@ class PostShareView(View):
         }
 
         return render(request, 'blogsito/share.html', context=context)
+
+
+class PostCommentView(View):
+
+    def post(self, request, post_id):
+        post = get_object_or_404(Post, id=post_id, status=Post.Status.PUBLISHED)
+        form = CommentForm(request.POST)
+        comment = None
+
+        if form.is_valid():
+            # Create Comment object but don't save to database yet
+            comment = form.save(commit=False)
+            # Assign the current post to the comment
+            comment.post = post
+            # Save the comment to the database
+            comment.save()
+
+        context = {
+            'post': post,
+            'comment': comment,
+            'form': form,
+        }
+        return render(request, 'blogsito/comment.html', context=context)
