@@ -1,7 +1,9 @@
 from django.core.mail import send_mail
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.db.models import Count
 from django.shortcuts import render, get_object_or_404
 from django.views import View
+from taggit.models import Tag
 
 from blogsito.forms import EmailPostForm, CommentForm
 from blogsito.models import Post
@@ -9,10 +11,17 @@ from blogsito.models import Post
 
 class PostListView(View):
 
-    def get(self, request):
+    def get(self, request, tag_slug=None):
         posts = Post.published.all()
+        tag = None
+
+        if tag_slug:
+            tag = get_object_or_404(Tag, slug=tag_slug)
+            posts = posts.filter(tags__in=[tag])
+
         paginator = Paginator(posts, 3)  # 3 posts in each page_number
         page_number = request.GET.get('page')
+
         try:
             posts = paginator.page(page_number)
         except PageNotAnInteger:
@@ -23,6 +32,7 @@ class PostListView(View):
             posts = paginator.page(paginator.num_pages)
         context = {
             'posts': posts,
+            'tag': tag,
         }
         return render(request, 'blogsito/list.html', context=context)
 
@@ -36,10 +46,17 @@ class PostDetailView(View):
         )
         comments = post.comments.filter(active=True)
         form = CommentForm()
+
+        # List of similar posts
+        post_tags_ids = post.tags.values_list('id', flat=True)
+        similar_posts = Post.published.filter(tags__in=post_tags_ids).exclude(id=post.id)
+        similar_posts = similar_posts.annotate(same_tags=Count('tags')).order_by('-same_tags', '-publish')[:4]
+
         context = {
             'post': post,
             'comments': comments,
             'form': form,
+            'similar_posts': similar_posts,
         }
         return render(request, 'blogsito/detail.html', context=context)
 
