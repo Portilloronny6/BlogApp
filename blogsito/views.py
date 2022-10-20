@@ -1,11 +1,13 @@
+from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from django.core.mail import send_mail
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.db.models import Count
+from django.http import Http404
 from django.shortcuts import render, get_object_or_404
 from django.views import View
 from taggit.models import Tag
 
-from blogsito.forms import EmailPostForm, CommentForm
+from blogsito.forms import EmailPostForm, CommentForm, SearchForm
 from blogsito.models import Post
 
 
@@ -117,3 +119,29 @@ class PostCommentView(View):
             'form': form,
         }
         return render(request, 'blogsito/comment.html', context=context)
+
+
+class PostsSearchView(View):
+
+    def get(self, request):
+        form = SearchForm()
+        query = None
+        results = []
+
+        if 'query' in request.GET:
+            form = SearchForm(request.GET)
+            if not form.is_valid():
+                return Http404
+            query = form.cleaned_data['query']
+            search_vector = SearchVector('title', 'body', config='spanish')
+            search_query = SearchQuery(query, config='spanish')
+            rank = SearchRank(search_vector, search_query)
+            results = Post.objects.annotate(
+                search=search_vector, rank=rank
+            ).filter(search=search_query).order_by('-rank')
+        context = {
+            'form': form,
+            'query': query,
+            'results': results,
+        }
+        return render(request, 'blogsito/search.html', context)
